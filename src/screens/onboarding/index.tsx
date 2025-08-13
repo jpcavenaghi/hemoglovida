@@ -6,7 +6,7 @@ export default function Onboarding() {
 
   return (
     <ScrollView contentContainerStyle={{ flexGrow: 1 }}>
-      <View className="flex-1 justify-between bg-white px-6 pt-12 pb-10">
+      <View className="flex-1 justify-between bg-background px-6 pt-12 pb-10">
 
         {/* Nome e logo */}
         <View className="flex-row justify-center items-center">

@@ -8,7 +8,7 @@ export default function Signin() {
     const [showPassword, setShowPassword] = useState(false);
 
     return (
-        <View className="flex-1 bg-white px-6 pt-8 justify-between">
+        <View className="flex-1 bg-background px-6 pt-8 justify-between">
             {/* BLOCO SUPERIOR */}
             <View>
                 {/* SETA VOLTAR */}
@@ -50,7 +50,9 @@ export default function Signin() {
                 </View>
 
                 {/* ESQUECEU SENHA */}
-                <TouchableOpacity className="mb-8">
+                <TouchableOpacity
+                onPress={() => router.push('/pages/(auth)/forgotPassword')}
+                className="mb-8">
                     <Text className="text-red-500 text-base">Esqueceu a Senha?</Text>
                 </TouchableOpacity>
 
@@ -70,8 +72,6 @@ export default function Signin() {
                     </Text>
                 </Text>
             </View>
-
-            {/* BLOCO INFERIOR */}
           
                 {/* SEPARADOR */}
                 <View className="flex-row items-center mb-8">

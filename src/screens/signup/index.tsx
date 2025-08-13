@@ -9,7 +9,7 @@ export default function Signup() {
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, backgroundColor: '#fff' }}>
+    <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, backgroundColor: '#f7f7f7' }}>
       {/* Botão voltar */}
       <TouchableOpacity className='mt-5' onPress={() => router.push('../../')}>
         <Ionicons name="arrow-back" size={28} color="black" />
@@ -104,6 +104,7 @@ export default function Signup() {
 
       {/* Botão cadastrar */}
       <TouchableOpacity
+      onPress={() => router.push('/pages/(auth)/emailVerification')}
         style={{
           backgroundColor: '#e53935',
           paddingVertical: 15,
