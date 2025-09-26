@@ -4,8 +4,7 @@ module.exports = {
   presets: [require("nativewind/preset")],
   theme: {
     extend: {
-        colors: {
-        // Cores padrões do app
+        colors: {    
         background: "#f7f7f7",
         primaryRed: "#E53935",
         primaryRedDark: "#B71C1C",

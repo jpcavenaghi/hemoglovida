@@ -15,7 +15,7 @@ export default function Signin() {
         try {
             await signInWithEmailAndPassword(auth, email, password);
             Alert.alert("Sucesso", "Login realizado!");
-            router.push("./onboarding"); // ajuste para sua tela inicial
+            router.push("/pages/(home)/homePage");
         } catch (error: any) {
             Alert.alert("Erro", error.message);
         }
@@ -97,7 +97,7 @@ export default function Signin() {
                     <Text className="ml-2 text-base">Google</Text>
                 </TouchableOpacity>
                 <TouchableOpacity className="flex-row items-center border border-gray-300 px-4 py-4 rounded-lg w-[48%] justify-center">
-                    <AntDesign name="apple1" size={22} color="black" />
+                    {/* <AntDesign name="apple1" size={22} color="black" /> */}
                     <Text className="ml-2 text-base">Apple</Text>
                 </TouchableOpacity>
             </View>
