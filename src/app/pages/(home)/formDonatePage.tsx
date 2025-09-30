@@ -1,2 +1,2 @@
-import FormDonate from "@/src/screens/formDonate/formDonate";
+import FormDonate from "@/src/screens/formDonate";
 export default FormDonate;

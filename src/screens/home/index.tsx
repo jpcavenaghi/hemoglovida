@@ -1,4 +1,4 @@
-import { View, Text, Image, TouchableOpacity, ScrollView } from 'react-native';
+import { View, Text, TouchableOpacity, ScrollView } from 'react-native';
 import { useRouter } from 'expo-router';
 // Apenas importando o Ionicons agora
 import { Ionicons } from '@expo/vector-icons';
@@ -6,7 +6,7 @@ import { Ionicons } from '@expo/vector-icons';
 export default function HomeScreen() {
     const router = useRouter();
 
-    // Dados de exemplo que viriam da sua API ou estado
+    // Dados de exemplo que viriam de uma API ou estado
     const impacto = {
         vidasSalvas: 4,
         tempo: 15,
@@ -23,7 +23,6 @@ export default function HomeScreen() {
         },
         {
             id: 2,
-            // Ícone ajustado para Ionicons (usei 'medkit' como alternativa para ambulância)
             icon: 'medkit-outline',
             title: 'Unidade Móvel - Itapira',
             description: 'Coletando qualquer tipo sanguíneo',
@@ -32,14 +31,8 @@ export default function HomeScreen() {
 
     return (
         <ScrollView className="flex-1 bg-gray-50">
-            {/* SEÇÃO SUPERIOR VERMELHA */}
             <View className="bg-red-600 p-6 rounded-b-3xl items-center shadow-lg">
-                <Image
-                    // Substitua pelo seu ícone de coração/batimento
-                    //   source={require('@/assets/images/heartbeat_icon.png')}
-                    className="w-16 h-16 mb-4"
-                    resizeMode="contain"
-                />
+               
                 <Text className="text-white text-2xl font-bold text-center">
                     Seu Sangue Pode Salvar Vidas!
                 </Text>
@@ -60,17 +53,17 @@ export default function HomeScreen() {
                         {/* Card Vidas */}
                         <View className="flex-1 bg-red-100 p-4 rounded-xl items-center">
                             <Ionicons name="people-outline" size={24} color="#DC2626" />
-                            <Text className="text-red-700 font-bold mt-2">{impacto.vidasSalvas} vidas salvas</Text>
+                            <Text className="text-red-700 font-bold mt-2 text-center">{impacto.vidasSalvas} vidas salvas</Text>
                         </View>
                         {/* Card Tempo */}
-                        <View className="flex-1 bg-red-100 p-4 rounded-xl items-center">
+                        <View className="flex-1 bg-red-100 p-4 rounded-xl items-center ">
                             <Ionicons name="time-outline" size={24} color="#DC2626" />
-                            <Text className="text-red-700 font-bold mt-2">{impacto.tempo} min do seu tempo</Text>
+                            <Text className="text-red-700 font-bold mt-2 text-center">{impacto.tempo} min do seu tempo</Text>
                         </View>
                         {/* Card Dias */}
                         <View className="flex-1 bg-red-100 p-4 rounded-xl items-center">
                             <Ionicons name="calendar-outline" size={24} color="#DC2626" />
-                            <Text className="text-red-700 font-bold mt-2">{impacto.diasEntreDoacoes} dias entre doações</Text>
+                            <Text className="text-red-700 font-bold mt-2 text-center">{impacto.diasEntreDoacoes} dias entre doações</Text>
                         </View>
                     </View>
                 </View>

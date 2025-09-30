@@ -152,49 +152,6 @@ export default function Signup() {
         >Faça Login</Text>
       </Text>
 
-      <View style={{ flexDirection: 'row', alignItems: 'center', marginBottom: 20 }}>
-        <View style={{ flex: 1, height: 1, backgroundColor: '#ccc' }} />
-        <Text style={{ marginHorizontal: 10, color: '#777' }}>ou</Text>
-        <View style={{ flex: 1, height: 1, backgroundColor: '#ccc' }} />
-      </View>
-
-      <View style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
-        <TouchableOpacity
-          style={{
-            flexDirection: 'row',
-            borderWidth: 1,
-            borderColor: '#ccc',
-            borderRadius: 10,
-            paddingVertical: 12,
-            paddingHorizontal: 15,
-            flex: 1,
-            marginRight: 10,
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-        >
-          <FontAwesome name="google" size={20} color="#00000" style={{ marginRight: 8 }} />
-          <Text>Cadastre-se com Google</Text>
-        </TouchableOpacity>
-
-        <TouchableOpacity
-          style={{
-            flexDirection: 'row',
-            borderWidth: 1,
-            borderColor: '#ccc',
-            borderRadius: 10,
-            paddingVertical: 12,
-            paddingHorizontal: 15,
-            flex: 1,
-            marginLeft: 10,
-            justifyContent: 'center',
-            alignItems: 'center'
-          }}
-        >
-          <FontAwesome name="apple" size={20} color="#000" style={{ marginRight: 8 }} />
-          <Text>Cadastre-se com Apple</Text>
-        </TouchableOpacity>
-      </View>
 
       <View className="flex-1 justify-end items-center pb-4">
         <View className="w-1/3 h-2 mb-2 bg-red-600 rounded-full" />
