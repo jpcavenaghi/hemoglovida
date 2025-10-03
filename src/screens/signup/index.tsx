@@ -1,9 +1,11 @@
 import { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
-import { Ionicons, FontAwesome } from '@expo/vector-icons';
+import { Ionicons } from '@expo/vector-icons';
 import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
 import { auth } from "../../services/firebase/config";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "../../services/firebase/config";
 
 export default function Signup() {
   const router = useRouter();
@@ -18,144 +20,108 @@ export default function Signup() {
       Alert.alert("Erro", "As senhas não coincidem.");
       return;
     }
+    if (password.length < 6) {
+      Alert.alert('Atenção', 'A senha deve ter no mínimo 6 caracteres.');
+      return;
+    }
 
     try {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
+      const user = userCredential.user;
+
+      await setDoc(doc(db, "users", user.uid), {
+        uid: user.uid,
+        email: user.email,
+      });
 
       // Enviar e-mail de verificação
       await sendEmailVerification(userCredential.user);
 
       Alert.alert(
         "Verifique seu e-mail",
-        "Enviamos um link de verificação para o seu e-mail."
+        "Enviamos um link de verificação para sua caixa de entrada. Por favor, verifique para continuar."
       );
 
       // Redireciona para a tela de verificação
       router.push('/pages/(auth)/emailVerification');
 
     } catch (error: any) {
-      Alert.alert("Erro", error.message);
+ 
+      if (error.code === 'auth/email-already-in-use') {
+        Alert.alert("Erro", "Este e-mail já está cadastrado.");
+      } else {
+        Alert.alert("Erro", "Não foi possível criar a conta. Verifique seu e-mail e tente novamente.");
+      }
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={{ flexGrow: 1, padding: 20, backgroundColor: '#f7f7f7' }}>
-      <TouchableOpacity className='mt-5' onPress={() => router.push('../../')}>
-        <Ionicons name="arrow-back" size={28} color="black" />
-      </TouchableOpacity>
-
-      <Text style={{ fontSize: 24, fontWeight: 'bold', marginTop: 10 }}>Cadastre-se</Text>
-      <Text style={{ color: '#777', marginBottom: 20 }}>
-        Um gesto simples. Um impacto imenso.
-      </Text>
-
-      <Text style={{ fontWeight: 'bold', marginBottom: 5 }}>Nome:</Text>
-      <TextInput
-        placeholder="Seu nome"
-        style={{
-          borderWidth: 1,
-          borderColor: '#ddd',
-          borderRadius: 8,
-          padding: 10,
-          marginBottom: 15
-        }}
-      />
-
-      <Text style={{ fontWeight: 'bold', marginBottom: 5 }}>Email:</Text>
-      <TextInput
-        placeholder="Seu email"
-        keyboardType="email-address"
-        value={email}
-        onChangeText={setEmail}
-        style={{
-          borderWidth: 1,
-          borderColor: '#ddd',
-          borderRadius: 8,
-          padding: 10,
-          marginBottom: 15
-        }}
-      />
-
-      <Text style={{ fontWeight: 'bold', marginBottom: 5 }}>Senha:</Text>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          borderWidth: 1,
-          borderColor: '#ddd',
-          borderRadius: 8,
-          paddingHorizontal: 10,
-          marginBottom: 15
-        }}
-      >
-        <TextInput
-          placeholder="Sua senha"
-          secureTextEntry={!showPassword}
-          value={password}
-          onChangeText={setPassword}
-          style={{ flex: 1, paddingVertical: 10 }}
-        />
-        <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
-          <Ionicons
-            name={showPassword ? 'eye-off' : 'eye'}
-            size={20}
-            color="#888"
-          />
+    <SafeAreaView className="flex-1 bg-background">
+      <ScrollView contentContainerStyle={{ flexGrow: 1 }} className="px-6">
+        <TouchableOpacity onPress={() => router.back()} className="mt-12 mb-6 self-start">
+          <Ionicons name="arrow-back" size={28} color="black" />
         </TouchableOpacity>
-      </View>
 
-      <Text style={{ fontWeight: 'bold', marginBottom: 5 }}>Confirmar senha:</Text>
-      <View
-        style={{
-          flexDirection: 'row',
-          alignItems: 'center',
-          borderWidth: 1,
-          borderColor: '#ddd',
-          borderRadius: 8,
-          paddingHorizontal: 10,
-          marginBottom: 20
-        }}
-      >
+        <Text className="text-3xl font-bold">Cadastre-se</Text>
+        <Text className="text-lg text-gray-500 mb-8">
+          Um gesto simples. Um impacto imenso.
+        </Text>
+
+        <Text className="text-base font-semibold mb-2">Email:</Text>
         <TextInput
-          placeholder="Confirme sua senha"
-          secureTextEntry={!showConfirmPassword}
-          value={confirmPassword}
-          onChangeText={setConfirmPassword}
-          style={{ flex: 1, paddingVertical: 10 }}
+          className="bg-gray-100 rounded-md py-4 px-3 mb-4 text-base"
+          placeholder="Seu email"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={email}
+          onChangeText={setEmail}
         />
-        <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
-          <Ionicons
-            name={showConfirmPassword ? 'eye-off' : 'eye'}
-            size={20}
-            color="#888"
+
+        <Text className="text-base font-semibold mb-2">Senha:</Text>
+        <View className="flex-row items-center bg-gray-100 rounded-md mb-4 px-3">
+          <TextInput
+            className="flex-1 py-4 text-base"
+            placeholder="Mínimo 6 caracteres"
+            secureTextEntry={!showPassword}
+            value={password}
+            onChangeText={setPassword}
           />
+          <TouchableOpacity onPress={() => setShowPassword(!showPassword)}>
+            <Ionicons name={showPassword ? 'eye-off' : 'eye'} size={22} color="gray" />
+          </TouchableOpacity>
+        </View>
+
+        <Text className="text-base font-semibold mb-2">Confirmar senha:</Text>
+        <View className="flex-row items-center bg-gray-100 rounded-md mb-8 px-3">
+          <TextInput
+            className="flex-1 py-4 text-base"
+            placeholder="Confirme sua senha"
+            secureTextEntry={!showConfirmPassword}
+            value={confirmPassword}
+            onChangeText={setConfirmPassword}
+          />
+          <TouchableOpacity onPress={() => setShowConfirmPassword(!showConfirmPassword)}>
+            <Ionicons name={showConfirmPassword ? 'eye-off' : 'eye'} size={22} color="gray" />
+          </TouchableOpacity>
+        </View>
+
+        <TouchableOpacity
+          onPress={handleRegister}
+          className="bg-red-600 py-4 rounded-full mb-8"
+        >
+          <Text className="text-white text-lg text-center font-bold">Cadastrar-se</Text>
         </TouchableOpacity>
-      </View>
 
-      <TouchableOpacity
-        onPress={handleRegister}
-        style={{
-          backgroundColor: '#e53935',
-          paddingVertical: 15,
-          borderRadius: 30,
-          alignItems: 'center',
-          marginBottom: 20
-        }}
-      >
-        <Text style={{ color: '#fff', fontWeight: 'bold', fontSize: 16 }}>Cadastrar-se</Text>
-      </TouchableOpacity>
-
-      <Text style={{ textAlign: 'center', marginBottom: 20 }}>
-        Já tem uma conta?{' '}
-        <Text style={{ color: '#e53935', fontWeight: 'bold' }}
-          onPress={() => router.push('/pages/(auth)/signinPage')}
-        >Faça Login</Text>
-      </Text>
-
-
-      <View className="flex-1 justify-end items-center pb-4">
-        <View className="w-1/3 h-2 mb-2 bg-red-600 rounded-full" />
-      </View>
-    </ScrollView>
+        <Text className="text-center text-gray-500 text-base mb-10">
+          Já tem uma conta?{' '}
+          <Text
+            className="text-red-500 font-semibold"
+            onPress={() => router.push('/pages/(auth)/signinPage')}
+          >
+            Faça Login
+          </Text>
+        </Text>
+      </ScrollView>
+    </SafeAreaView>
   );
 }
