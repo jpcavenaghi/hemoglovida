@@ -41,7 +41,7 @@ export default function ProfileScreen() {
     const router = useRouter();
     const { userData, isLoading } = useAuth();
 
-    const donorStatus = getDonorStatus(userData?.respostasFormulario || {});
+        const donorStatus = getDonorStatus(userData || {});
 
     const handleLogout = async () => {
         try {

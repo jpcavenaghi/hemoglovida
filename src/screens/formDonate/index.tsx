@@ -158,9 +158,7 @@ export default function DonateScreen() {
             setIsSubmitting(true);
             try {
                 const userDocRef = doc(db, "users", user.uid);
-                await updateDoc(userDocRef, {
-                    respostasFormulario: formData
-                });
+                  await updateDoc(userDocRef, formData);
                 Alert.alert("Sucesso!", "Suas respostas foram salvas. Verifique seu status no perfil.");
                 router.push('/pages/(home)/profilePage');
             } catch (error) {
