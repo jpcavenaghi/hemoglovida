@@ -1,27 +1,26 @@
 import React, { useState } from 'react';
-// IMPORTS CORRIGIDOS: Adicionado Alert e ActivityIndicator
 import { View, Text, TouchableOpacity, SafeAreaView, Modal, Pressable, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase/config';
-import { useAuth } from '../../context/authContext'; 
+import { useAuth } from '../../context/authContext';
 
 // ESTRUTURA DE DADOS 
 type Question = {
-  key: string;
-  text: string;
-  type: 'yes_no' | 'text' | 'select' | 'number';
-  info?: string;
-  placeholder?: string;
-  options?: string[];
+    key: string;
+    text: string;
+    type: 'yes_no' | 'text' | 'select' | 'number';
+    info?: string;
+    placeholder?: string;
+    options?: string[];
 };
 
 type FormStep = {
-  step: number;
-  title: string;
-  description: string;
-  questions: Question[];
+    step: number;
+    title: string;
+    description: string;
+    questions: Question[];
 };
 
 const formSteps: FormStep[] = [
@@ -30,11 +29,12 @@ const formSteps: FormStep[] = [
         title: 'Informações Pessoais',
         description: 'Para começar, precisamos de alguns dados básicos sobre você.',
         questions: [
-          { key: 'nome', text: 'Nome Completo', type: 'text', placeholder: 'Digite seu nome completo' },
-          { key: 'tipoSanguineo', text: 'Tipo Sanguíneo', type: 'select', options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Não sei'] },
-          { key: 'cidade', text: 'Cidade de Residência', type: 'text', placeholder: 'Ex: São Paulo, SP' },
-          { key: 'sexo', text: 'Sexo', type: 'select', options: ['Masculino', 'Feminino', 'Outro'] },
-          { key: 'idade', text: 'Idade', type: 'number', placeholder: 'Digite sua idade' },
+            { key: 'nome', text: 'Nome Completo', type: 'text', placeholder: 'Digite seu nome completo' },
+            { key: 'telefone', text: 'Telefone (WhatsApp)', type: 'number', placeholder: '(99) 99999-9999' },
+            { key: 'tipoSanguineo', text: 'Tipo Sanguíneo', type: 'select', options: ['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-', 'Não sei'] },
+            { key: 'cidade', text: 'Cidade de Residência', type: 'text', placeholder: 'Ex: São Paulo, SP' },
+            { key: 'sexo', text: 'Sexo', type: 'select', options: ['Masculino', 'Feminino', 'Outro'] },
+            { key: 'idade', text: 'Idade', type: 'number', placeholder: 'Digite sua idade' },
         ]
     },
     {
@@ -42,9 +42,9 @@ const formSteps: FormStep[] = [
         title: 'Impedimentos Crônicos',
         description: 'Responda com atenção. A sua segurança e a do receptor são nossa prioridade.',
         questions: [
-          { key: 'doencasInfecciosas', text: 'Você tem ou já teve alguma doença infecciosa transmissível pelo sangue?', type: 'yes_no', info: 'Isso inclui HIV, AIDS, Hepatites B e C, Doença de Chagas, Malária, HTS, IST, entre outras.' },
-          { key: 'usoDrogasIlicitas', text: 'Você já fez uso de drogas ilícitas injetáveis alguma vez na vida?', type: 'yes_no', info: 'Qualquer uso de drogas ilícitas injetáveis é um impedimento definitivo para a doação.' },
-          { key: 'doencasGraves', text: 'Você tem ou já teve alguma doença grave?', type: 'yes_no', info: 'Isso inclui doenças cardíacas, renais, pulmonares, hepáticas, autoimunes, hipertireoidismo ou câncer.' }
+            { key: 'doencasInfecciosas', text: 'Você tem ou já teve alguma doença infecciosa transmissível pelo sangue?', type: 'yes_no', info: 'Isso inclui HIV, AIDS, Hepatites B e C, Doença de Chagas, Malária, HTS, IST, entre outras.' },
+            { key: 'usoDrogasIlicitas', text: 'Você já fez uso de drogas ilícitas injetáveis alguma vez na vida?', type: 'yes_no', info: 'Qualquer uso de drogas ilícitas injetáveis é um impedimento definitivo para a doação.' },
+            { key: 'doencasGraves', text: 'Você tem ou já teve alguma doença grave?', type: 'yes_no', info: 'Isso inclui doenças cardíacas, renais, pulmonares, hepáticas, autoimunes, hipertireoidismo ou câncer.' }
         ]
     },
     {
@@ -52,10 +52,10 @@ const formSteps: FormStep[] = [
         title: 'Impedimentos Temporários (Saúde)',
         description: 'Estas são condições que podem te impedir de doar por um período determinado.',
         questions: [
-          { key: 'gripeResfriado', text: 'Nos últimos dias, você teve gripe, resfriado ou febre?', type: 'yes_no', info: 'É necessário aguardar 7 dias após o desaparecimento completo dos sintomas.' },
-          { key: 'gravidezAmamentacao', text: 'Você está grávida, em período pós-parto ou amamentando?', type: 'yes_no', info: 'Prazos: Parto Normal (90 dias), Cesariana (180 dias), Amamentação (12 meses após o parto).' },
-          { key: 'tatuagemMaquiagem', text: 'Você fez tatuagem, maquiagem definitiva ou piercing recentemente?', type: 'yes_no', info: 'É necessário aguardar um período que pode variar dependendo do procedimento e das condições sanitárias do local.' },
-          { key: 'tratamentoDentario', text: 'Você passou por algum procedimento odontológico recentemente?', type: 'yes_no', info: 'Procedimentos como tratamento de canal podem exigir um tempo de espera de algumas semanas.' }
+            { key: 'gripeResfriado', text: 'Nos últimos dias, você teve gripe, resfriado ou febre?', type: 'yes_no', info: 'É necessário aguardar 7 dias após o desaparecimento completo dos sintomas.' },
+            { key: 'gravidezAmamentacao', text: 'Você está grávida, em período pós-parto ou amamentando?', type: 'yes_no', info: 'Prazos: Parto Normal (90 dias), Cesariana (180 dias), Amamentação (12 meses após o parto).' },
+            { key: 'tatuagemMaquiagem', text: 'Você fez tatuagem, maquiagem definitiva ou piercing recentemente?', type: 'yes_no', info: 'É necessário aguardar um período que pode variar dependendo do procedimento e das condições sanitárias do local.' },
+            { key: 'tratamentoDentario', text: 'Você passou por algum procedimento odontológico recentemente?', type: 'yes_no', info: 'Procedimentos como tratamento de canal podem exigir um tempo de espera de algumas semanas.' }
         ]
     },
     {
@@ -85,6 +85,36 @@ const formSteps: FormStep[] = [
 
 const TOTAL_STEPS = formSteps.length;
 
+const calculateDonorStatus = (data: Record<string, any>): string => {
+    // Lista de chaves que impedem a doação (crônicos ou temporários)
+    const criticalYesAnswers = [
+        'doencasInfecciosas',
+        'usoDrogasIlicitas',
+        'doencasGraves',
+        'gripeResfriado',
+        'gravidezAmamentacao',
+        'tatuagemMaquiagem',
+        'tratamentoDentario',
+        'cirurgias',
+        'endoscopia',
+        'vacinas',
+        'medicamentos',
+        'transfusao',
+        'parceirosSexuais',
+        'drogasNaoInjetaveis',
+        'bebidaAlcoolica',
+        'viagem',
+    ];
+
+    for (const key of criticalYesAnswers) {
+        if (data[key] === 'sim') {
+            return 'Inativo'; // Se qualquer resposta for "sim", o doador está inapto/inativo
+        }
+    }
+
+    return 'Ativo';
+};
+
 const ProgressBar = ({ currentStep }: { currentStep: number }) => (
     <View className="flex-row justify-between items-center w-full">
         <View className="flex-row gap-2 flex-1">
@@ -96,7 +126,7 @@ const ProgressBar = ({ currentStep }: { currentStep: number }) => (
 
 export default function DonateScreen() {
     const router = useRouter();
-    const { user } = useAuth();
+    const { user, refreshUserData } = useAuth();
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState<Record<string, any>>({});
     const [isInfoModalVisible, setInfoModalVisible] = useState(false);
@@ -127,7 +157,7 @@ export default function DonateScreen() {
         setSelectModalVisible(false);
     };
 
-   
+
     const handleNext = async () => {
         const currentQuestions = formSteps.find(step => step.step === currentStep)?.questions;
         if (!currentQuestions) return;
@@ -138,7 +168,6 @@ export default function DonateScreen() {
                 return;
             }
         }
-
         if (currentStep === 1) {
             const age = parseInt(formData.idade, 10);
             if (isNaN(age) || age < 16 || age > 69) {
@@ -146,9 +175,9 @@ export default function DonateScreen() {
                 return;
             }
         }
-
         if (currentStep < TOTAL_STEPS) {
             setCurrentStep(currentStep + 1);
+
         } else {
             if (!user) {
                 Alert.alert("Erro", "Você precisa estar logado para finalizar.");
@@ -157,10 +186,23 @@ export default function DonateScreen() {
 
             setIsSubmitting(true);
             try {
+                const donorStatus = calculateDonorStatus(formData);
+
+                const finalData = {
+                    ...formData,
+                    status: donorStatus,
+                    email: user.email // Garante que o email do usuário logado seja salvo
+                };
+
                 const userDocRef = doc(db, "users", user.uid);
-                  await updateDoc(userDocRef, formData);
+                await setDoc(userDocRef, finalData, { merge: true })
+
+                await refreshUserData();
+
+
                 Alert.alert("Sucesso!", "Suas respostas foram salvas. Verifique seu status no perfil.");
                 router.push('/pages/(home)/profilePage');
+
             } catch (error) {
                 console.error("Erro ao salvar respostas: ", error);
                 Alert.alert("Erro", "Não foi possível salvar suas respostas. Tente novamente.");
@@ -169,14 +211,14 @@ export default function DonateScreen() {
             }
         }
     };
-    
+
     const handleBackOrExit = () => currentStep > 1 ? setCurrentStep(currentStep - 1) : router.back();
 
     const currentStepData = formSteps.find((step) => step.step === currentStep);
 
     return (
         <SafeAreaView className="flex-1 bg-gray-100">
-           
+
             <Modal transparent visible={isInfoModalVisible} onRequestClose={() => setInfoModalVisible(false)}><Pressable onPress={() => setInfoModalVisible(false)} className="flex-1 justify-center items-center bg-black/50 p-8"><View className="bg-white rounded-lg p-6 w-full"><Text className="text-lg font-bold mb-4">Informação Adicional</Text><Text className="text-base text-gray-700">{modalInfoText}</Text><TouchableOpacity onPress={() => setInfoModalVisible(false)} className="bg-red-600 rounded-full py-3 mt-6"><Text className="text-white text-center font-bold">Entendi</Text></TouchableOpacity></View></Pressable></Modal>
             <Modal transparent visible={isSelectModalVisible} onRequestClose={() => setSelectModalVisible(false)}><Pressable onPress={() => setSelectModalVisible(false)} className="flex-1 justify-center items-center bg-black/50 p-8"><View className="bg-white rounded-lg p-6 w-full"><Text className="text-lg font-bold mb-4">Selecione uma opção</Text><ScrollView>{selectOptions.map((option, index) => (<TouchableOpacity key={index} onPress={() => handleSelectOption(option)} className="py-3 border-b border-gray-200"><Text className="text-base text-gray-800">{option}</Text></TouchableOpacity>))}</ScrollView></View></Pressable></Modal>
             <Modal transparent visible={validationAlert.isVisible} onRequestClose={() => setValidationAlert({ isVisible: false, message: '' })}><Pressable onPress={() => setValidationAlert({ isVisible: false, message: '' })} className="flex-1 justify-center items-center bg-black/50 p-8"><View className="bg-white rounded-lg p-6 w-full items-center"><Ionicons name="alert-circle-outline" size={40} color="#E53935" /><Text className="text-lg font-bold my-4 text-center">Atenção</Text><Text className="text-base text-gray-700 text-center">{validationAlert.message}</Text><TouchableOpacity onPress={() => setValidationAlert({ isVisible: false, message: '' })} className="bg-red-600 rounded-full py-3 mt-6 w-full"><Text className="text-white text-center font-bold">Entendi</Text></TouchableOpacity></View></Pressable></Modal>
@@ -185,7 +227,7 @@ export default function DonateScreen() {
                 <ProgressBar currentStep={currentStep} />
                 <View className="mt-8"><Text className="text-3xl font-extrabold text-gray-800">{currentStepData?.title}</Text><Text className="text-base text-gray-500 mt-2">{currentStepData?.description}</Text></View>
                 <ScrollView className="mt-6" showsVerticalScrollIndicator={false}>
-                    <View className="gap-6 pb-4"> 
+                    <View className="gap-6 pb-4">
                         {currentStepData?.questions.map((question) => (
                             <View key={question.key}>
                                 {question.type !== 'yes_no' && (<Text className="text-base font-semibold text-gray-700 mb-2">{question.text}</Text>)}

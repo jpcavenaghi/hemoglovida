@@ -2,7 +2,7 @@ import { useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, ScrollView, Alert, SafeAreaView } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
-import { createUserWithEmailAndPassword, sendEmailVerification } from "firebase/auth";
+import { createUserWithEmailAndPassword } from "firebase/auth";
 import { auth } from "../../services/firebase/config";
 import { doc, setDoc } from "firebase/firestore";
 import { db } from "../../services/firebase/config";
@@ -29,24 +29,20 @@ export default function Signup() {
       const userCredential = await createUserWithEmailAndPassword(auth, email, password);
       const user = userCredential.user;
 
+      // Cria o documento do usuário no Firestore
       await setDoc(doc(db, "users", user.uid), {
         uid: user.uid,
         email: user.email,
       });
-
-      // Enviar e-mail de verificação
-      await sendEmailVerification(userCredential.user);
-
+-
       Alert.alert(
-        "Verifique seu e-mail",
-        "Enviamos um link de verificação para sua caixa de entrada. Por favor, verifique para continuar."
+        "Sucesso!",
+        "Sua conta foi criada. Faça o login para continuar."
       );
 
-      // Redireciona para a tela de verificação
-      router.push('/pages/(auth)/emailVerification');
+      router.push('/pages/(auth)/signinPage');
 
     } catch (error: any) {
- 
       if (error.code === 'auth/email-already-in-use') {
         Alert.alert("Erro", "Este e-mail já está cadastrado.");
       } else {

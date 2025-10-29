@@ -1,18 +1,17 @@
-// src/services/firebase/config.ts
-import { initializeApp, getApps, getApp  } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 
-// ⚠️ Use variáveis de ambiente seguras (.env)
 const firebaseConfig = {
-  apiKey: "AIzaSyALtmPe6MSopVHibUBzpJdgeh15bsfobl0",
-  authDomain: "hemoglovida-ae282.firebaseapp.com",
-  projectId: "hemoglovida-ae282",
-  storageBucket: "hemoglovida-ae282.firebasestorage.app",
-  messagingSenderId: "397475084823",
-  appId: "1:397475084823:web:ed6c455752fedfe94d3a52",
-  measurementId: "G-2R233W8R4J"
-}
+  apiKey: process.env.EXPO_PUBLIC_API_KEY,
+  authDomain: process.env.EXPO_PUBLIC_AUTH_DOMAIN,
+  projectId: process.env.EXPO_PUBLIC_PROJECT_ID,
+  storageBucket: process.env.EXPO_PUBLIC_STORAGE_BUCKET,
+  messagingSenderId: process.env.EXPO_PUBLIC_MESSAGING_SENDER_ID,
+  appId: process.env.EXPO_PUBLIC_APP_ID,
+  measurementId: process.env.EXPO_PUBLIC_MEASUREMENT_ID
+};
+
 const app = !getApps().length ? initializeApp(firebaseConfig) : getApp();
 
 export const auth = getAuth(app);
