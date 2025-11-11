@@ -3,8 +3,20 @@
 import { Tabs } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { View, Text, Image } from 'react-native';
+import { LocaleConfig } from 'react-native-calendars'; 
 
-// 1. CRIAMOS UM COMPONENTE REUTILIZÁVEL PARA O CABEÇALHO
+LocaleConfig.locales['pt-br'] = {
+  monthNames: [
+    'Janeiro', 'Fevereiro', 'Março', 'Abril', 'Maio', 'Junho',
+    'Julho', 'Agosto', 'Setembro', 'Outubro', 'Novembro', 'Dezembro'
+  ],
+  monthNamesShort: ['Jan.', 'Fev.', 'Mar.', 'Abr.', 'Mai.', 'Jun.', 'Jul.', 'Ago.', 'Set.', 'Out.', 'Nov.', 'Dez.'],
+  dayNames: ['Domingo', 'Segunda-feira', 'Terça-feira', 'Quarta-feira', 'Quinta-feira', 'Sexta-feira', 'Sábado'],
+  dayNamesShort: ['DOM', 'SEG', 'TER', 'QUA', 'QUI', 'SEX', 'SÁB'],
+  today: "Hoje"
+};
+LocaleConfig.defaultLocale = 'pt-br';
+
 const CustomHeader = ({ title }: { title: string }) => (
   <View style={{ flexDirection: 'row', alignItems: 'center' }}>
     <Image
@@ -42,7 +54,7 @@ export default function HomeLayout() {
         }}
       />
       <Tabs.Screen
-        name="faqPage"
+        name="faq" 
         options={{
           title: 'Perguntas Frequentes',
           tabBarLabel: 'Faq',
@@ -50,6 +62,7 @@ export default function HomeLayout() {
             <Ionicons name="chatbubble-outline" size={size} color={color} />
           ),
           headerTitle: () => <CustomHeader title="FAQ" />,
+          headerShown: false,
         }}
       />
       <Tabs.Screen
