@@ -5,12 +5,13 @@ import {
   TouchableOpacity, 
   ScrollView, 
   ActivityIndicator, 
-  Modal
+  Modal 
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { db } from '../../services/firebase/config'; 
 import { collection, onSnapshot, query, limit } from 'firebase/firestore';
+import { useAuth } from '../../context/authContext'; 
 
 interface Campaign {
   id: string;
@@ -25,15 +26,28 @@ interface Campaign {
 
 export default function HomeScreen() {
   const router = useRouter();
+  const { userData } = useAuth();
 
   const [campaigns, setCampaigns] = useState<Campaign[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [selectedCampaign, setSelectedCampaign] = useState<Campaign | null>(null);
 
+  const getDaysUntilNextDonation = () => {
+    if (!userData?.proximaDoacao) return 0;
+    
+    const today = new Date();
+    const nextDate = new Date(userData.proximaDoacao);
+    const diffTime = nextDate.getTime() - today.getTime();
+    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    
+    return diffDays > 0 ? diffDays : 0;
+  };
+
   const impacto = {
-    vidasSalvas: 4,
-    tempo: 15,
-    diasEntreDoacoes: 60,
+    // Pega do perfil ou assume 0
+    doacoes: userData?.doacoes || 0, 
+    vidasSalvas: (userData?.doacoes || 0) * 4, 
+    diasRestantes: getDaysUntilNextDonation(),
   };
 
   useEffect(() => {
@@ -73,22 +87,43 @@ export default function HomeScreen() {
         </View>
 
         <View className="p-6">
-          {/* SEÇÃO DE IMPACTO */}
           <View>
             <Text className="text-xl font-bold text-gray-800 mb-4">Impacto da sua Doação!</Text>
             <View className="flex-row justify-between gap-3">
-              <View className="flex-1 bg-red-100 p-4 rounded-xl items-center">
-                <Ionicons name="people-outline" size={24} color="#DC2626" />
-                <Text className="text-red-700 font-bold mt-2 text-center">{impacto.vidasSalvas} vidas salvas</Text>
+              
+              {/* Card 1: Quantidade de Doações */}
+              <View className="flex-1 bg-red-100 p-4 rounded-xl items-center justify-center min-h-[120px]">
+                <Ionicons name="water" size={28} color="#DC2626" />
+                <Text className="text-3xl font-extrabold text-red-700 mt-2">
+                  {impacto.doacoes}
+                </Text>
+                <Text className="text-red-600 text-xs text-center font-medium mt-1">
+                  doações realizadas
+                </Text>
               </View>
-              <View className="flex-1 bg-red-100 p-4 rounded-xl items-center ">
-                <Ionicons name="time-outline" size={24} color="#DC2626" />
-                <Text className="text-red-700 font-bold mt-2 text-center">{impacto.tempo} min do seu tempo</Text>
+
+              {/* Card 2: Vidas Salvas */}
+              <View className="flex-1 bg-red-100 p-4 rounded-xl items-center justify-center min-h-[120px]">
+                <Ionicons name="heart" size={28} color="#DC2626" />
+                <Text className="text-3xl font-extrabold text-red-700 mt-2">
+                  {impacto.vidasSalvas}
+                </Text>
+                <Text className="text-red-600 text-xs text-center font-medium mt-1">
+                  vidas salvas
+                </Text>
               </View>
-              <View className="flex-1 bg-red-100 p-4 rounded-xl items-center">
-                <Ionicons name="calendar-outline" size={24} color="#DC2626" />
-                <Text className="text-red-700 font-bold mt-2 text-center">{impacto.diasEntreDoacoes} dias entre doações</Text>
+
+              {/* Card 3: Dias para próxima */}
+              <View className="flex-1 bg-red-100 p-4 rounded-xl items-center justify-center min-h-[120px]">
+                <Ionicons name="hourglass" size={28} color="#DC2626" />
+                <Text className="text-3xl font-extrabold text-red-700 mt-2">
+                  {impacto.diasRestantes}
+                </Text>
+                <Text className="text-red-600 text-xs text-center font-medium mt-1">
+                  dias para a próxima
+                </Text>
               </View>
+
             </View>
           </View>
 
@@ -108,7 +143,6 @@ export default function HomeScreen() {
                   <TouchableOpacity 
                     key={campanha.id} 
                     className="bg-white p-4 rounded-xl flex-row items-center shadow-sm"
-
                     onPress={() => setSelectedCampaign(campanha)}
                   >
                     <View className="bg-red-100 p-3 rounded-lg mr-4">
@@ -140,15 +174,10 @@ export default function HomeScreen() {
         visible={selectedCampaign !== null}
         onRequestClose={() => setSelectedCampaign(null)}
       >
-
         <View className="flex-1 bg-black/50 justify-center items-center p-4">
-          
-          {/* Container do Modal */}
           <View className="bg-white w-full rounded-2xl shadow-xl overflow-hidden max-h-[80%]">
-            
             {selectedCampaign && (
               <>
-                {/* Cabeçalho do Modal */}
                 <View className="bg-red-600 p-4 flex-row justify-between items-start">
                   <View className="flex-1 mr-2">
                     <Text className="text-white text-xl font-bold">
@@ -167,7 +196,6 @@ export default function HomeScreen() {
                 </View>
 
                 <ScrollView className="p-5">
-                  
                   <View className="flex-row mb-6 gap-4">
                     <View className="flex-1 bg-gray-50 p-3 rounded-lg">
                       <Text className="text-xs text-gray-400 uppercase font-bold mb-1">Local</Text>
@@ -221,8 +249,8 @@ export default function HomeScreen() {
                   <TouchableOpacity 
                     className="bg-red-600 py-3 rounded-full flex-row items-center justify-center shadow-md mb-2"
                     onPress={() => {
-                      setSelectedCampaign(null); // Fecha o modal
-                      router.push('/pages/(home)/appointmentsPage'); // Vai para doação
+                      setSelectedCampaign(null); 
+                      router.push('/pages/(home)/appointmentsPage');
                     }}
                   >
                     <Text className="text-white font-bold text-base">Quero Doar Agora!</Text>

@@ -1,6 +1,6 @@
 import React, { createContext, useState, useEffect, useContext, ReactNode } from 'react';
 import { onAuthStateChanged, User } from 'firebase/auth';
-import { doc, getDoc, DocumentData } from 'firebase/firestore';
+import { doc, getDoc, onSnapshot, DocumentData } from 'firebase/firestore';
 import { auth, db } from '../services/firebase/config';
 
 interface UserData extends DocumentData {
@@ -10,6 +10,18 @@ interface UserData extends DocumentData {
   cidade: string;
   sexo: string;
   email: string;
+  doacoes?: number;
+  vidasSalvas?: number;
+  proximaDoacao?: string;
+  ultimaDoacao?: string;
+  appointment?: {
+    id?: string;
+    status: string;
+    data: string;
+    hora: string;
+    local: string;
+    hemocentroId: string;
+  };
 }
 
 interface AuthContextType {
@@ -19,7 +31,6 @@ interface AuthContextType {
   refreshUserData: () => Promise<void>;
 }
 
-// Cria o contexto com um valor padrão
 const AuthContext = createContext<AuthContextType>({
   user: null,
   userData: null,
@@ -32,46 +43,57 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [userData, setUserData] = useState<UserData | null>(null);
   const [isLoading, setIsLoading] = useState(true);
 
-
   const fetchUserData = async (uid: string) => {
-    if (!uid) {
-      setUserData(null);
-      return;
-    }
+    if (!uid) return;
     try {
       const userDocRef = doc(db, 'users', uid);
       const userDocSnap = await getDoc(userDocRef);
-
       if (userDocSnap.exists()) {
         setUserData(userDocSnap.data() as UserData);
-      } else {
-        console.log("Documento do usuário não encontrado no Firestore!");
-        setUserData(null);
       }
     } catch (error) {
-      console.error("Erro ao buscar dados do usuário no context:", error);
-      setUserData(null);
+      console.error("Erro ao buscar dados (fetch manual):", error);
     }
   };
 
   useEffect(() => {
-    const unsubscribe = onAuthStateChanged(auth, async (currentUser) => {
+    let unsubscribeFirestore = () => {};
+
+    const unsubscribeAuth = onAuthStateChanged(auth, (currentUser) => {
       setUser(currentUser);
 
       if (currentUser) {
-        await fetchUserData(currentUser.uid);
+        const userDocRef = doc(db, 'users', currentUser.uid);
+        
+        unsubscribeFirestore = onSnapshot(userDocRef, (docSnap) => {
+          if (docSnap.exists()) {
+            const data = docSnap.data() as UserData;
+            setUserData(data);
+          } else {
+            console.log("Documento do usuário não encontrado!");
+            setUserData(null);
+          }
+          setIsLoading(false)
+        }, (error) => {
+          console.error("Erro no listener do Firestore:", error);
+          setIsLoading(false);
+        });
+
       } else {
         setUserData(null);
+        setIsLoading(false);
+        unsubscribeFirestore();
       }
-      setIsLoading(false);
     });
 
-    return () => unsubscribe();
+    return () => {
+      unsubscribeAuth();
+      unsubscribeFirestore();
+    };
   }, []);
 
   const refreshUserData = async () => {
     if (user) {
-
       await fetchUserData(user.uid);
     }
   };
@@ -83,7 +105,6 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   );
 };
 
-// Hook (não muda)
 export const useAuth = () => {
   return useContext(AuthContext);
 };

@@ -45,7 +45,7 @@ export default function Signin() {
                 </View>
 
                 <Text className="text-base font-semibold mb-2">Senha:</Text>
-                <View className="flex-row items-center bg-gray-100 rounded-md mb-3 px-3">
+                <View className="flex-row items-center bg-gray-100 rounded-md mb-8 px-3">
                     <TextInput
                         className="flex-1 py-4 text-base"
                         placeholder="Digite sua senha"
@@ -61,12 +61,6 @@ export default function Signin() {
                         />
                     </TouchableOpacity>
                 </View>
-
-                <TouchableOpacity
-                    onPress={() => router.push('/pages/(auth)/forgotPassword')}
-                    className="mb-8 self-start"> 
-                    <Text className="text-red-500 text-base">Esqueceu a Senha?</Text>
-                </TouchableOpacity>
 
                 <TouchableOpacity
                     onPress={handleLogin}

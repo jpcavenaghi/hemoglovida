@@ -1,12 +1,23 @@
-import React, { useState } from 'react';
-import { View, Text, TouchableOpacity, SafeAreaView, Modal, Pressable, ScrollView, TextInput, Alert, ActivityIndicator } from 'react-native';
+import React, { useState, useEffect } from 'react';
+import { 
+    View, 
+    Text, 
+    TouchableOpacity, 
+    SafeAreaView, 
+    Modal, 
+    Pressable, 
+    ScrollView, 
+    TextInput, 
+    Alert, 
+    ActivityIndicator 
+} from 'react-native';
 import { useRouter } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import { doc, setDoc } from 'firebase/firestore';
 import { db } from '../../services/firebase/config';
 import { useAuth } from '../../context/authContext';
 
-// ESTRUTURA DE DADOS 
+// --- ESTRUTURA DE DADOS ---
 type Question = {
     key: string;
     text: string;
@@ -27,7 +38,7 @@ const formSteps: FormStep[] = [
     {
         step: 1,
         title: 'Informações Pessoais',
-        description: 'Para começar, precisamos de alguns dados básicos sobre você.',
+        description: 'Confira seus dados e atualize se necessário.',
         questions: [
             { key: 'nome', text: 'Nome Completo', type: 'text', placeholder: 'Digite seu nome completo' },
             { key: 'telefone', text: 'Telefone (WhatsApp)', type: 'number', placeholder: '(99) 99999-9999' },
@@ -108,7 +119,7 @@ const calculateDonorStatus = (data: Record<string, any>): string => {
 
     for (const key of criticalYesAnswers) {
         if (data[key] === 'sim') {
-            return 'Inativo'; // Se qualquer resposta for "sim", o doador está inapto/inativo
+            return 'Inativo';
         }
     }
 
@@ -126,7 +137,7 @@ const ProgressBar = ({ currentStep }: { currentStep: number }) => (
 
 export default function DonateScreen() {
     const router = useRouter();
-    const { user, refreshUserData } = useAuth();
+    const { user, userData, refreshUserData } = useAuth(); 
     const [currentStep, setCurrentStep] = useState(1);
     const [formData, setFormData] = useState<Record<string, any>>({});
     const [isInfoModalVisible, setInfoModalVisible] = useState(false);
@@ -136,6 +147,17 @@ export default function DonateScreen() {
     const [currentSelectKey, setCurrentSelectKey] = useState('');
     const [validationAlert, setValidationAlert] = useState({ isVisible: false, message: '' });
     const [isSubmitting, setIsSubmitting] = useState(false);
+
+    useEffect(() => {
+        if (userData) {
+            setFormData(prev => ({
+                ...prev,
+                ...userData,
+                idade: userData.idade ? String(userData.idade) : '',
+                telefone: userData.telefone ? String(userData.telefone) : ''
+            }));
+        }
+    }, [userData]);
 
     const handleDataChange = (questionKey: string, value: any) => {
         setFormData((prevData) => ({ ...prevData, [questionKey]: value }));
@@ -163,7 +185,8 @@ export default function DonateScreen() {
         if (!currentQuestions) return;
 
         for (const question of currentQuestions) {
-            if (!formData[question.key]) {
+            // Verifica se o campo está preenchido no estado formData
+            if (formData[question.key] === undefined || formData[question.key] === '') {
                 setValidationAlert({ isVisible: true, message: 'Por favor, preencha todos os campos para continuar.' });
                 return;
             }
@@ -191,16 +214,16 @@ export default function DonateScreen() {
                 const finalData = {
                     ...formData,
                     status: donorStatus,
-                    email: user.email // Garante que o email do usuário logado seja salvo
+                    email: user.email 
                 };
 
                 const userDocRef = doc(db, "users", user.uid);
+                // Usa merge: true para atualizar apenas os campos novos/modificados
                 await setDoc(userDocRef, finalData, { merge: true })
 
                 await refreshUserData();
 
-
-                Alert.alert("Sucesso!", "Suas respostas foram salvas. Verifique seu status no perfil.");
+                Alert.alert("Sucesso!", "Dados atualizados com sucesso! Verifique seu status no perfil.");
                 router.push('/pages/(home)/profilePage');
 
             } catch (error) {
@@ -231,10 +254,49 @@ export default function DonateScreen() {
                         {currentStepData?.questions.map((question) => (
                             <View key={question.key}>
                                 {question.type !== 'yes_no' && (<Text className="text-base font-semibold text-gray-700 mb-2">{question.text}</Text>)}
-                                {question.type === 'text' && <TextInput className="bg-white border border-gray-300 rounded-lg p-3 text-base" placeholder={question.placeholder} value={formData[question.key] || ''} onChangeText={(text) => handleDataChange(question.key, text)} />}
-                                {question.type === 'number' && <TextInput className="bg-white border border-gray-300 rounded-lg p-3 text-base" placeholder={question.placeholder} keyboardType="number-pad" value={formData[question.key] || ''} onChangeText={(text) => handleDataChange(question.key, text)} />}
-                                {question.type === 'select' && (<TouchableOpacity onPress={() => openSelectModal(question)} className="bg-white border border-gray-300 rounded-lg p-3.5 flex-row justify-between items-center"><Text className={`text-base ${formData[question.key] ? 'text-gray-800' : 'text-gray-400'}`}>{formData[question.key] || `Selecione...`}</Text><Ionicons name="chevron-down" size={20} color="gray" /></TouchableOpacity>)}
-                                {question.type === 'yes_no' && (<View><View className="flex-row items-center mb-3"><Text className="text-base font-semibold text-gray-700 flex-1">{question.text}</Text>{question.info && (<TouchableOpacity onPress={() => openInfoModal(question.info!)} className="ml-2"><Ionicons name="information-circle-outline" size={26} color="#6B7280" /></TouchableOpacity>)}</View><View className="flex-row gap-4"><TouchableOpacity onPress={() => handleDataChange(question.key, 'sim')} className={`flex-1 py-3 rounded-full border ${formData[question.key] === 'sim' ? 'bg-red-600 border-red-600' : 'border-gray-300 bg-white'}`}><Text className={`text-center font-bold ${formData[question.key] === 'sim' ? 'text-white' : 'text-gray-700'}`}>Sim</Text></TouchableOpacity><TouchableOpacity onPress={() => handleDataChange(question.key, 'nao')} className={`flex-1 py-3 rounded-full border ${formData[question.key] === 'nao' ? 'bg-red-600 border-red-600' : 'border-gray-300 bg-white'}`}><Text className={`text-center font-bold ${formData[question.key] === 'nao' ? 'text-white' : 'text-gray-700'}`}>Não</Text></TouchableOpacity></View></View>)}
+                                
+                                {question.type === 'text' && 
+                                    <TextInput 
+                                        className="bg-white border border-gray-300 rounded-lg p-3 text-base" 
+                                        placeholder={question.placeholder} 
+                                        // Garante que seja string para evitar crash se vier número do banco
+                                        value={formData[question.key] ? String(formData[question.key]) : ''} 
+                                        onChangeText={(text) => handleDataChange(question.key, text)} 
+                                    />
+                                }
+                                {question.type === 'number' && 
+                                    <TextInput 
+                                        className="bg-white border border-gray-300 rounded-lg p-3 text-base" 
+                                        placeholder={question.placeholder} 
+                                        keyboardType="number-pad" 
+                                        value={formData[question.key] ? String(formData[question.key]) : ''} 
+                                        onChangeText={(text) => handleDataChange(question.key, text)} 
+                                    />
+                                }
+                                {question.type === 'select' && (
+                                    <TouchableOpacity onPress={() => openSelectModal(question)} className="bg-white border border-gray-300 rounded-lg p-3.5 flex-row justify-between items-center">
+                                        <Text className={`text-base ${formData[question.key] ? 'text-gray-800' : 'text-gray-400'}`}>
+                                            {formData[question.key] || `Selecione...`}
+                                        </Text>
+                                        <Ionicons name="chevron-down" size={20} color="gray" />
+                                    </TouchableOpacity>
+                                )}
+                                {question.type === 'yes_no' && (
+                                    <View>
+                                        <View className="flex-row items-center mb-3">
+                                            <Text className="text-base font-semibold text-gray-700 flex-1">{question.text}</Text>
+                                            {question.info && (<TouchableOpacity onPress={() => openInfoModal(question.info!)} className="ml-2"><Ionicons name="information-circle-outline" size={26} color="#6B7280" /></TouchableOpacity>)}
+                                        </View>
+                                        <View className="flex-row gap-4">
+                                            <TouchableOpacity onPress={() => handleDataChange(question.key, 'sim')} className={`flex-1 py-3 rounded-full border ${formData[question.key] === 'sim' ? 'bg-red-600 border-red-600' : 'border-gray-300 bg-white'}`}>
+                                                <Text className={`text-center font-bold ${formData[question.key] === 'sim' ? 'text-white' : 'text-gray-700'}`}>Sim</Text>
+                                            </TouchableOpacity>
+                                            <TouchableOpacity onPress={() => handleDataChange(question.key, 'nao')} className={`flex-1 py-3 rounded-full border ${formData[question.key] === 'nao' ? 'bg-red-600 border-red-600' : 'border-gray-300 bg-white'}`}>
+                                                <Text className={`text-center font-bold ${formData[question.key] === 'nao' ? 'text-white' : 'text-gray-700'}`}>Não</Text>
+                                            </TouchableOpacity>
+                                        </View>
+                                    </View>
+                                )}
                             </View>
                         ))}
                     </View>

@@ -14,6 +14,8 @@ import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/authContext';
 import { Picker } from '@react-native-picker/picker';
 import { Calendar } from 'react-native-calendars'; 
+import { useRouter } from 'expo-router'; 
+
 import { db } from '../../services/firebase/config'; 
 import { collection, addDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore'; 
 
@@ -29,7 +31,7 @@ interface Appointment {
   local: string;
   data: string;
   hora: string;
-  status: 'Pendente' | 'Confirmado' | 'Cancelado';
+  status: 'Pendente' | 'Confirmado' | 'Cancelado' | 'Concluído'; // Adicionado Concluído
   hemocentroId: string; 
   patientName: string; 
   userId: string;
@@ -39,6 +41,7 @@ interface AppointmentStatusCardProps {
   appointment: Appointment;
   onCancel: () => void;
   onNewAppointment: () => void; 
+  onGoHome: () => void; // Nova prop para voltar
 }
 
 interface InfoRowProps {
@@ -56,41 +59,81 @@ const HEMOCENTROS: Hemocentro[] = [
 
 const AVAILABLE_TIMES = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00'];
 
-// --- Componentes Auxiliares ---
-const AppointmentStatusCard: React.FC<AppointmentStatusCardProps> = ({ appointment, onCancel, onNewAppointment }) => {
-  const getStatusInfo = (): { icon: IconName; color: string; bg: string } => {
+// --- COMPONENTE DO CARD MODIFICADO ---
+const AppointmentStatusCard: React.FC<AppointmentStatusCardProps> = ({ appointment, onCancel, onNewAppointment, onGoHome }) => {
+  
+  const getStatusInfo = (): { icon: IconName; color: string; bg: string; title: string } => {
     switch (appointment.status) {
-      case 'Confirmado': return { icon: 'checkmark-circle', color: 'text-green-600', bg: 'bg-green-100' };
-      case 'Cancelado': return { icon: 'close-circle', color: 'text-red-600', bg: 'bg-red-100' };
-      case 'Pendente': default: return { icon: 'time-outline', color: 'text-yellow-600', bg: 'bg-yellow-100' };
+      case 'Concluído': 
+        return { icon: 'ribbon', color: 'text-blue-700', bg: 'bg-blue-100', title: 'Doação Realizada!' };
+      case 'Confirmado': 
+        return { icon: 'checkmark-circle', color: 'text-green-600', bg: 'bg-green-100', title: 'Confirmado' };
+      case 'Cancelado': 
+        return { icon: 'close-circle', color: 'text-red-600', bg: 'bg-red-100', title: 'Cancelado' };
+      case 'Pendente': 
+      default: 
+        return { icon: 'time-outline', color: 'text-yellow-600', bg: 'bg-yellow-100', title: 'Pendente' };
     }
   };
   const statusInfo = getStatusInfo(); 
 
+  // Formata a data para exibição
+  const formatDate = (dateString: string) => {
+    if(!dateString) return '-';
+    const [year, month, day] = dateString.split('-');
+    return `${day}/${month}/${year}`;
+  }
+
   return (
-    <View className="p-6">
-      <Text className="text-2xl font-extrabold text-red-600 mb-6">Seu Agendamento</Text>
-      <View className={`p-4 rounded-lg flex-row items-center ${statusInfo.bg} mb-6`}>
-        <Ionicons name={statusInfo.icon} size={28} className={statusInfo.color} />
-        <Text className={`text-base font-bold ml-3 ${statusInfo.color}`}>{appointment.status}</Text>
-      </View>
-      <View className="bg-white rounded-lg p-4 shadow-sm">
-        <InfoRow icon="business-outline" label="Local" value={appointment.local} />
-        <InfoRow icon="calendar-outline" label="Data" value={appointment.data} />
-        <InfoRow icon="time-outline" label="Hora" value={appointment.hora} isLast />
+    <View className="p-6 flex-1 justify-center">
+      <Text className="text-2xl font-extrabold text-red-600 mb-6 text-center">
+        {appointment.status === 'Concluído' ? 'Parabéns!' : 'Seu Agendamento'}
+      </Text>
+      
+      <View className={`p-6 rounded-xl flex-row items-center justify-center ${statusInfo.bg} mb-8 shadow-sm`}>
+        <Ionicons name={statusInfo.icon} size={32} className={statusInfo.color} />
+        <Text className={`text-xl font-bold ml-3 ${statusInfo.color}`}>{statusInfo.title}</Text>
       </View>
       
-      {appointment.status !== 'Cancelado' ? (
-        <TouchableOpacity onPress={onCancel} className="bg-red-600 py-4 rounded-full flex-row items-center justify-center mt-8 shadow-md">
+      {appointment.status === 'Concluído' && (
+        <Text className="text-center text-gray-600 mb-8 px-4">
+          Obrigado por sua doação! Seu gesto salvou vidas. 
+          Seu período de intervalo já começou a contar.
+        </Text>
+      )}
+
+      <View className="bg-white rounded-lg p-4 shadow-sm mb-8">
+        <InfoRow icon="business-outline" label="Local" value={appointment.local} />
+        <InfoRow icon="calendar-outline" label="Data" value={formatDate(appointment.data)} />
+        {appointment.status !== 'Concluído' && (
+           <InfoRow icon="time-outline" label="Hora" value={appointment.hora} isLast />
+        )}
+      </View>
+      
+      {/*Se CONFIRMADO ou PENDENTE -> Pode Cancelar */}
+      {(appointment.status === 'Confirmado' || appointment.status === 'Pendente') && (
+        <TouchableOpacity onPress={onCancel} className="bg-red-600 py-4 rounded-full flex-row items-center justify-center shadow-md">
           <Ionicons name="trash-outline" size={20} color="white" />
           <Text className="text-white font-bold text-base ml-2">Cancelar Agendamento</Text>
         </TouchableOpacity>
-      ) : (
-        <TouchableOpacity onPress={onNewAppointment} className="bg-blue-600 py-4 rounded-full flex-row items-center justify-center mt-8 shadow-md">
+      )}
+
+      {/* Se CANCELADO -> Pode fazer Novo */}
+      {appointment.status === 'Cancelado' && (
+        <TouchableOpacity onPress={onNewAppointment} className="bg-blue-600 py-4 rounded-full flex-row items-center justify-center shadow-md">
           <Ionicons name="calendar-outline" size={20} color="white" />
           <Text className="text-white font-bold text-base ml-2">Fazer Novo Agendamento</Text>
         </TouchableOpacity>
       )}
+
+      {/* Se CONCLUÍDO -> Botão de Voltar ao Início (Tela Bloqueada para novos agendamentos) */}
+      {appointment.status === 'Concluído' && (
+        <TouchableOpacity onPress={onGoHome} className="bg-gray-800 py-4 rounded-full flex-row items-center justify-center shadow-md">
+          <Ionicons name="home-outline" size={20} color="white" />
+          <Text className="text-white font-bold text-base ml-2">Voltar ao Início</Text>
+        </TouchableOpacity>
+      )}
+
     </View>
   );
 };
@@ -107,7 +150,8 @@ const InfoRow: React.FC<InfoRowProps> = ({ icon, label, value, isLast = false })
 
 // --- COMPONENTE PRINCIPAL ---
 export default function AppointmentsScreen() {
-  const { userData } = useAuth(); 
+  const router = useRouter(); // Hook de navegação
+  const { userData, isLoading } = useAuth(); 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localAppointment, setLocalAppointment] = useState<Appointment | null>(null);
 
@@ -127,21 +171,16 @@ export default function AppointmentsScreen() {
     return { [selectedDate]: { selected: true, selectedColor: '#E53935' } };
   }, [selectedDate]);
 
-  // --- 1. EFEITO PARA CARREGAR DADOS INICIAIS ---
   useEffect(() => {
     if (userData?.appointment) {
       setLocalAppointment(userData.appointment as Appointment);
     }
   }, [userData]);
 
-  // --- 2. NOVO EFEITO: ESCUTAR MUDANÇAS NO FIREBASE (REAL-TIME) ---
   useEffect(() => {
-    // Se não tivermos um agendamento local COM ID, não temos o que escutar
     if (!localAppointment || !localAppointment.id) return;
 
-    // Cria um listener para o documento específico deste agendamento
     const appointmentRef = doc(db, 'appointments', localAppointment.id);
-    
     const unsubscribe = onSnapshot(appointmentRef, (docSnap) => {
       if (docSnap.exists()) {
         const updatedData = docSnap.data() as Appointment;
@@ -150,9 +189,8 @@ export default function AppointmentsScreen() {
         }
       }
     });
-
     return () => unsubscribe();
-  }, [localAppointment?.id]); 
+  }, [localAppointment?.id]);
 
 
   const handleSaveAppointment = async () => {
@@ -176,7 +214,6 @@ export default function AppointmentsScreen() {
       };
 
       const docRef = await addDoc(collection(db, 'appointments'), newAppointment);
-      
       const appointmentWithId = { ...newAppointment, id: docRef.id };
 
       if (userData?.uid) {
@@ -211,17 +248,14 @@ export default function AppointmentsScreen() {
                  await updateDoc(doc(db, 'appointments', localAppointment.id), {
                    status: 'Cancelado'
                  });
-              } 
-              else if (userData?.uid) {
+              } else if (userData?.uid) {
                  await updateDoc(doc(db, 'users', userData.uid), {
                    'appointment.status': 'Cancelado'
                  });
                  setLocalAppointment(prev => prev ? ({ ...prev, status: 'Cancelado' }) : null);
               }
-              
               Alert.alert("Cancelado", "Agendamento cancelado.");
             } catch (error) {
-              console.error(error);
               Alert.alert("Erro", "Não foi possível cancelar.");
             }
           } 
@@ -236,13 +270,26 @@ export default function AppointmentsScreen() {
     setSelectedTime('');
   };
 
+  const handleGoHome = () => {
+    router.replace('/pages/(home)/homePage');
+  };
+
+  if (isLoading) {
+    return (
+      <View className="flex-1 justify-center items-center bg-gray-100">
+        <ActivityIndicator size="large" color="#E53935" />
+      </View>
+    );
+  }
+
   if (localAppointment) {
     return (
       <SafeAreaView className="flex-1 bg-gray-100">
         <AppointmentStatusCard 
           appointment={localAppointment}
           onCancel={handleCancelAppointment}
-          onNewAppointment={handleResetScreen} 
+          onNewAppointment={handleResetScreen}
+          onGoHome={handleGoHome} // Passamos a função de voltar
         />
       </SafeAreaView>
     );
@@ -256,7 +303,7 @@ export default function AppointmentsScreen() {
       >
         <ScrollView className="p-6">
           <Text className="text-2xl font-extrabold text-red-600 mb-6">Agendar Doação</Text>
-
+          {/* ... (Resto do formulário igual ao anterior) ... */}
           <View className="bg-white rounded-lg shadow-sm mb-6 p-2">
             <Text className="text-sm font-bold text-gray-600 ml-2 mb-1">Escolha o Hemocentro</Text>
             <Picker
@@ -324,7 +371,6 @@ export default function AppointmentsScreen() {
               </>
             )}
           </TouchableOpacity>
-
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
