@@ -8,7 +8,8 @@ import {
   ActivityIndicator,
   Alert,
   KeyboardAvoidingView,
-  Platform 
+  Platform,
+  Modal 
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useAuth } from '../../context/authContext';
@@ -17,10 +18,11 @@ import { Calendar } from 'react-native-calendars';
 import { useRouter } from 'expo-router'; 
 
 import { db } from '../../services/firebase/config'; 
-import { collection, addDoc, doc, updateDoc, onSnapshot } from 'firebase/firestore'; 
+import { collection, addDoc, doc, updateDoc, onSnapshot, getDocs, query } from 'firebase/firestore'; 
 
 type IconName = React.ComponentProps<typeof Ionicons>['name'];
 
+// --- Interfaces ---
 interface Hemocentro {
   id: string;
   nome: string;
@@ -31,7 +33,7 @@ interface Appointment {
   local: string;
   data: string;
   hora: string;
-  status: 'Pendente' | 'Confirmado' | 'Cancelado' | 'Concluído'; // Adicionado Concluído
+  status: 'Pendente' | 'Confirmado' | 'Cancelado' | 'Concluído'; 
   hemocentroId: string; 
   patientName: string; 
   userId: string;
@@ -41,7 +43,7 @@ interface AppointmentStatusCardProps {
   appointment: Appointment;
   onCancel: () => void;
   onNewAppointment: () => void; 
-  onGoHome: () => void; // Nova prop para voltar
+  onGoHome: () => void; 
 }
 
 interface InfoRowProps {
@@ -51,17 +53,10 @@ interface InfoRowProps {
   isLast?: boolean;
 }
 
-const HEMOCENTROS: Hemocentro[] = [ 
-  { id: 'hc-campinas', nome: 'Hemocentro Campinas (Unicamp)' },
-  { id: 'hc-itapira', nome: 'Hemocentro Itapira (Unidade Móvel)' },
-  { id: 'hc-sumare', nome: 'Hemocentro Sumaré (Hospital Estadual)' },
-];
+const AVAILABLE_TIMES = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00', '13:00', '13:30', '14:00'];
 
-const AVAILABLE_TIMES = ['08:00', '08:30', '09:00', '09:30', '10:00', '10:30', '11:00'];
-
-// --- COMPONENTE DO CARD MODIFICADO ---
+// --- COMPONENTE DO CARD ---
 const AppointmentStatusCard: React.FC<AppointmentStatusCardProps> = ({ appointment, onCancel, onNewAppointment, onGoHome }) => {
-  
   const getStatusInfo = (): { icon: IconName; color: string; bg: string; title: string } => {
     switch (appointment.status) {
       case 'Concluído': 
@@ -77,7 +72,6 @@ const AppointmentStatusCard: React.FC<AppointmentStatusCardProps> = ({ appointme
   };
   const statusInfo = getStatusInfo(); 
 
-  // Formata a data para exibição
   const formatDate = (dateString: string) => {
     if(!dateString) return '-';
     const [year, month, day] = dateString.split('-');
@@ -89,19 +83,16 @@ const AppointmentStatusCard: React.FC<AppointmentStatusCardProps> = ({ appointme
       <Text className="text-2xl font-extrabold text-red-600 mb-6 text-center">
         {appointment.status === 'Concluído' ? 'Parabéns!' : 'Seu Agendamento'}
       </Text>
-      
       <View className={`p-6 rounded-xl flex-row items-center justify-center ${statusInfo.bg} mb-8 shadow-sm`}>
         <Ionicons name={statusInfo.icon} size={32} className={statusInfo.color} />
         <Text className={`text-xl font-bold ml-3 ${statusInfo.color}`}>{statusInfo.title}</Text>
       </View>
-      
       {appointment.status === 'Concluído' && (
         <Text className="text-center text-gray-600 mb-8 px-4">
           Obrigado por sua doação! Seu gesto salvou vidas. 
           Seu período de intervalo já começou a contar.
         </Text>
       )}
-
       <View className="bg-white rounded-lg p-4 shadow-sm mb-8">
         <InfoRow icon="business-outline" label="Local" value={appointment.local} />
         <InfoRow icon="calendar-outline" label="Data" value={formatDate(appointment.data)} />
@@ -110,30 +101,24 @@ const AppointmentStatusCard: React.FC<AppointmentStatusCardProps> = ({ appointme
         )}
       </View>
       
-      {/*Se CONFIRMADO ou PENDENTE -> Pode Cancelar */}
       {(appointment.status === 'Confirmado' || appointment.status === 'Pendente') && (
         <TouchableOpacity onPress={onCancel} className="bg-red-600 py-4 rounded-full flex-row items-center justify-center shadow-md">
           <Ionicons name="trash-outline" size={20} color="white" />
           <Text className="text-white font-bold text-base ml-2">Cancelar Agendamento</Text>
         </TouchableOpacity>
       )}
-
-      {/* Se CANCELADO -> Pode fazer Novo */}
       {appointment.status === 'Cancelado' && (
         <TouchableOpacity onPress={onNewAppointment} className="bg-blue-600 py-4 rounded-full flex-row items-center justify-center shadow-md">
           <Ionicons name="calendar-outline" size={20} color="white" />
           <Text className="text-white font-bold text-base ml-2">Fazer Novo Agendamento</Text>
         </TouchableOpacity>
       )}
-
-      {/* Se CONCLUÍDO -> Botão de Voltar ao Início (Tela Bloqueada para novos agendamentos) */}
       {appointment.status === 'Concluído' && (
         <TouchableOpacity onPress={onGoHome} className="bg-gray-800 py-4 rounded-full flex-row items-center justify-center shadow-md">
           <Ionicons name="home-outline" size={20} color="white" />
           <Text className="text-white font-bold text-base ml-2">Voltar ao Início</Text>
         </TouchableOpacity>
       )}
-
     </View>
   );
 };
@@ -150,14 +135,53 @@ const InfoRow: React.FC<InfoRowProps> = ({ icon, label, value, isLast = false })
 
 // --- COMPONENTE PRINCIPAL ---
 export default function AppointmentsScreen() {
-  const router = useRouter(); // Hook de navegação
-  const { userData, isLoading } = useAuth(); 
+  const router = useRouter(); 
+  const { userData, isLoading: isAuthLoading } = useAuth(); 
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [localAppointment, setLocalAppointment] = useState<Appointment | null>(null);
 
-  const [selectedHemocentro, setSelectedHemocentro] = useState(HEMOCENTROS[0].id);
+  const [hemocentrosList, setHemocentrosList] = useState<Hemocentro[]>([]);
+  const [isLoadingHemocentros, setIsLoadingHemocentros] = useState(true);
+
+  const [selectedHemocentro, setSelectedHemocentro] = useState('');
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedTime, setSelectedTime] = useState('');
+  const [showHemocentroModal, setShowHemocentroModal] = useState(false);
+
+  // --- VERIFICAÇÕES DE STATUS ---
+  const hasCompletedForm = userData && userData.tipoSanguineo && userData.status;
+  const isChronicUnfit = userData?.status === 'Inapto Cronicamente';
+  const isTemporaryUnfit = userData?.status === 'Inapto Temporariamente';
+
+  // --- BUSCAR HEMOCENTROS ---
+  useEffect(() => {
+    const fetchHemocentros = async () => {
+      try {
+        const q = query(collection(db, 'hemocentros'));
+        const querySnapshot = await getDocs(q);
+        
+        const list: Hemocentro[] = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          if (data.nome) {
+            list.push({ id: doc.id, nome: data.nome });
+          }
+        });
+        
+        setHemocentrosList(list);
+        if (list.length > 0 && !selectedHemocentro) {
+           setSelectedHemocentro(list[0].id);
+        }
+      } catch (error) {
+        console.error("Erro ao buscar hemocentros:", error);
+        Alert.alert("Erro", "Não foi possível carregar a lista de locais.");
+      } finally {
+        setIsLoadingHemocentros(false);
+      }
+    };
+
+    fetchHemocentros();
+  }, []);
 
   const getToday = () => new Date().toISOString().split('T')[0];
   const getThreeMonthsFromNow = () => {
@@ -171,6 +195,7 @@ export default function AppointmentsScreen() {
     return { [selectedDate]: { selected: true, selectedColor: '#E53935' } };
   }, [selectedDate]);
 
+  // --- EFEITOS DE AGENDAMENTO ---
   useEffect(() => {
     if (userData?.appointment) {
       setLocalAppointment(userData.appointment as Appointment);
@@ -201,7 +226,8 @@ export default function AppointmentsScreen() {
     setIsSubmitting(true);
     
     try {
-      const hemocentroNome = HEMOCENTROS.find(h => h.id === selectedHemocentro)?.nome || 'Local desconhecido';
+      const hemocentroObj = hemocentrosList.find(h => h.id === selectedHemocentro);
+      const hemocentroNome = hemocentroObj?.nome || 'Local desconhecido';
       
       const newAppointment: Omit<Appointment, 'id'> = {
         local: hemocentroNome,
@@ -223,11 +249,11 @@ export default function AppointmentsScreen() {
       }
 
       setLocalAppointment(appointmentWithId); 
-      Alert.alert("Sucesso!", "Seu agendamento foi enviado para o hemocentro.");
+      Alert.alert("Sucesso!", "Seu agendamento foi enviado.");
       
     } catch (error) {
       console.error("Erro ao salvar:", error);
-      Alert.alert("Erro", "Não foi possível salvar seu agendamento.");
+      Alert.alert("Erro", "Não foi possível salvar.");
     } finally {
       setIsSubmitting(false);
     }
@@ -274,7 +300,12 @@ export default function AppointmentsScreen() {
     router.replace('/pages/(home)/homePage');
   };
 
-  if (isLoading) {
+  const selectedHemocentroName = hemocentrosList.find(h => h.id === selectedHemocentro)?.nome || 'Selecione o Hemocentro...';
+
+  // --- RENDERIZAÇÃO CONDICIONAL ---
+
+  // 1. Loading
+  if (isAuthLoading) {
     return (
       <View className="flex-1 justify-center items-center bg-gray-100">
         <ActivityIndicator size="large" color="#E53935" />
@@ -282,6 +313,7 @@ export default function AppointmentsScreen() {
     );
   }
 
+  // 2. Agendamento Existente (Mostra o Card)
   if (localAppointment) {
     return (
       <SafeAreaView className="flex-1 bg-gray-100">
@@ -289,12 +321,89 @@ export default function AppointmentsScreen() {
           appointment={localAppointment}
           onCancel={handleCancelAppointment}
           onNewAppointment={handleResetScreen}
-          onGoHome={handleGoHome} // Passamos a função de voltar
+          onGoHome={handleGoHome} 
         />
       </SafeAreaView>
     );
   }
 
+  // 3. BLOQUEIO: Inapto Cronicamente
+  if (isChronicUnfit) {
+    return (
+        <SafeAreaView className="flex-1 bg-gray-100 justify-center items-center p-6">
+            <View className="bg-white p-8 rounded-2xl shadow-sm w-full items-center">
+                <View className="bg-red-100 p-4 rounded-full mb-6">
+                    <Ionicons name="close-circle" size={48} color="#DC2626" />
+                </View>
+                <Text className="text-2xl font-bold text-gray-800 text-center mb-2">
+                    Inapto para Doação
+                </Text>
+                <Text className="text-gray-500 text-center mb-8 leading-6">
+                    De acordo com as informações fornecidas, você possui um impedimento crônico para doação de sangue. Agradecemos seu interesse em ajudar!
+                </Text>
+                <TouchableOpacity 
+                    onPress={handleGoHome}
+                    className="bg-gray-800 w-full py-4 rounded-full flex-row items-center justify-center shadow-md"
+                >
+                    <Text className="text-white font-bold text-base">Voltar ao Início</Text>
+                </TouchableOpacity>
+            </View>
+        </SafeAreaView>
+    );
+  }
+
+  // 4. BLOQUEIO: Inapto Temporariamente (Ex: Acabou de doar ou Formulario)
+  if (isTemporaryUnfit) {
+      return (
+          <SafeAreaView className="flex-1 bg-gray-100 justify-center items-center p-6">
+              <View className="bg-white p-8 rounded-2xl shadow-sm w-full items-center">
+                  <View className="bg-blue-100 p-4 rounded-full mb-6">
+                      <Ionicons name="time-outline" size={48} color="#1E40AF" />
+                  </View>
+                  <Text className="text-2xl font-bold text-gray-800 text-center mb-2">
+                      Aguarde o Intervalo
+                  </Text>
+                  <Text className="text-gray-500 text-center mb-8 leading-6">
+                      Você possui um impedimento temporário (ex: doação recente ou condição de saúde). Consulte seu perfil para saber quando poderá doar novamente.
+                  </Text>
+                  <TouchableOpacity 
+                      onPress={() => router.push('/pages/(home)/profilePage')}
+                      className="bg-blue-600 w-full py-4 rounded-full flex-row items-center justify-center shadow-md"
+                  >
+                      <Text className="text-white font-bold text-base">Ver Perfil</Text>
+                  </TouchableOpacity>
+              </View>
+          </SafeAreaView>
+      );
+  }
+
+  // 5. BLOQUEIO: Formulário Não Preenchido
+  if (!hasCompletedForm) {
+    return (
+      <SafeAreaView className="flex-1 bg-gray-100 justify-center items-center p-6">
+        <View className="bg-white p-8 rounded-2xl shadow-sm w-full items-center">
+            <View className="bg-red-100 p-4 rounded-full mb-6">
+                <Ionicons name="clipboard-outline" size={48} color="#DC2626" />
+            </View>
+            <Text className="text-2xl font-bold text-gray-800 text-center mb-2">
+                Formulário Necessário
+            </Text>
+            <Text className="text-gray-500 text-center mb-8 leading-6">
+                Para realizar um agendamento, precisamos conhecer um pouco mais sobre você. Por favor, preencha o formulário de doação.
+            </Text>
+            <TouchableOpacity 
+                onPress={() => router.push('/pages/(home)/formDonatePage')}
+                className="bg-red-600 w-full py-4 rounded-full flex-row items-center justify-center shadow-md"
+            >
+                <Text className="text-white font-bold text-base">Preencher Agora</Text>
+                <Ionicons name="arrow-forward" size={20} color="white" style={{marginLeft: 8}} />
+            </TouchableOpacity>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // 6. TELA NORMAL DE AGENDAMENTO (Se passou por tudo acima)
   return (
     <SafeAreaView className="flex-1 bg-gray-100">
       <KeyboardAvoidingView 
@@ -303,17 +412,69 @@ export default function AppointmentsScreen() {
       >
         <ScrollView className="p-6">
           <Text className="text-2xl font-extrabold text-red-600 mb-6">Agendar Doação</Text>
-          {/* ... (Resto do formulário igual ao anterior) ... */}
+
+          {/* SELETOR DE HEMOCENTROS */}
           <View className="bg-white rounded-lg shadow-sm mb-6 p-2">
             <Text className="text-sm font-bold text-gray-600 ml-2 mb-1">Escolha o Hemocentro</Text>
-            <Picker
-              selectedValue={selectedHemocentro}
-              onValueChange={(itemValue) => setSelectedHemocentro(itemValue)}
-            >
-              {HEMOCENTROS.map(hc => (
-                <Picker.Item key={hc.id} label={hc.nome} value={hc.id} />
-              ))}
-            </Picker>
+            {isLoadingHemocentros ? (
+               <View className="p-4 items-center">
+                  <ActivityIndicator size="small" color="#E53935" />
+                  <Text className="text-xs text-gray-400 mt-2">Carregando locais...</Text>
+               </View>
+            ) : (
+              <>
+                {Platform.OS === 'ios' ? (
+                  <>
+                    <TouchableOpacity 
+                      onPress={() => setShowHemocentroModal(true)}
+                      className="p-3 bg-gray-50 rounded-md border border-gray-200 flex-row justify-between items-center"
+                    >
+                      <Text className="text-base text-gray-800" numberOfLines={1}>{selectedHemocentroName}</Text>
+                      <Ionicons name="chevron-down" size={20} color="gray" />
+                    </TouchableOpacity>
+                    <Modal
+                      visible={showHemocentroModal}
+                      transparent={true}
+                      animationType="slide"
+                      onRequestClose={() => setShowHemocentroModal(false)}
+                    >
+                      <View className="flex-1 justify-end bg-black/50">
+                        <View className="bg-white w-full pb-8 rounded-t-2xl">
+                          <View className="flex-row justify-between items-center p-4 border-b border-gray-200 bg-gray-100 rounded-t-2xl">
+                            <Text className="text-gray-500 font-medium">Selecione</Text>
+                            <TouchableOpacity onPress={() => setShowHemocentroModal(false)}>
+                              <Text className="text-blue-600 font-bold text-lg">Pronto</Text>
+                            </TouchableOpacity>
+                          </View>
+                          <View style={{ height: 200, width: '100%', justifyContent: 'center' }}>
+                            <Picker
+                              selectedValue={selectedHemocentro}
+                              onValueChange={(itemValue) => setSelectedHemocentro(itemValue)}
+                              style={{ height: 200 }}
+                              itemStyle={{ color: 'black', fontSize: 18 }}
+                            >
+                              {hemocentrosList.map(hc => (
+                                <Picker.Item key={hc.id} label={hc.nome} value={hc.id} color="black" />
+                              ))}
+                            </Picker>
+                          </View>
+                        </View>
+                      </View>
+                    </Modal>
+                  </>
+                ) : (
+                  <Picker
+                    selectedValue={selectedHemocentro}
+                    onValueChange={(itemValue) => setSelectedHemocentro(itemValue)}
+                  >
+                    {hemocentrosList.length === 0 && <Picker.Item label="Nenhum local disponível" value="" />}
+                    {hemocentrosList.map(hc => (
+                      <Picker.Item key={hc.id} label={hc.nome} value={hc.id} />
+                    ))}
+                  </Picker>
+                )}
+              </>
+            )}
           </View>
           
           <View className="bg-white rounded-lg shadow-sm mb-6 overflow-hidden">
@@ -371,6 +532,7 @@ export default function AppointmentsScreen() {
               </>
             )}
           </TouchableOpacity>
+
         </ScrollView>
       </KeyboardAvoidingView>
     </SafeAreaView>
